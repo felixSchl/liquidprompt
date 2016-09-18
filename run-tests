@@ -1,0 +1,81 @@
+#!/bin/bash
+
+function _log { echo "$*"; } >&2
+
+rm -rf .tests && mkdir .tests || exit 1
+
+# extract the inline source-code into files
+find tests -type f -name '*.bats' | while read -r file; do
+	_log "processing $file..."
+	testfile=".tests/$(basename "$file")"
+	cat <<-EOF > "$testfile"
+	load support
+
+	EOF
+	awk '
+		BEGIN {
+			ix = 0
+			in_test = ""
+			test_src = ""
+			header = ""
+			preamble = ""
+			split("zsh bash", SUPPORTED_SHELLS, " ")
+		}
+
+		function flush () {
+			gsub(/\n.*$/, "", test_src)
+			if (test_src != "") {
+				scriptpath = ".tests/" ix ".bats"
+				for (i = 1; i <= length(SUPPORTED_SHELLS); i++) {
+					shell=SUPPORTED_SHELLS[i]
+					print "@test " q shell ": " header " {"
+					print "    script=\"$BATS_TMPDIR/run\""
+					print "    cat <<-__EOTEST__ > \"$script\" && chmod +x \"$script\" && run_shell " shell " \"$script\""
+					print test_src
+					print "__EOTEST__"
+					print "}"
+				}
+			}
+			in_test = ""
+			test_src = ""
+			header = ""
+			ix++
+		}
+
+		/^ *@test  *([^ ].*)  *\{ *(.*)$/ {
+			flush()
+			original = $0
+			gsub(/^ *@test  */, "")
+			q = substr($0, 0, 1)
+			match($0, "^" q "[^" q "]*" q)
+			header = substr($0, RSTART + 1, RLENGTH)
+			gsub("^" q "[^" q "]*" q, "")
+			gsub(/^ *{ */, "")
+			test_src = $0
+			in_test = 1
+			next
+		}
+
+		in_test {
+			if (preamble != "") {
+				print preamble
+				preamble = ""
+			}
+
+			if (test_src != "") {
+				test_src = test_src "\n"
+			}
+			test_src = test_src $0
+			next
+		}
+
+		END { flush() }
+	' < "$file" >> "$testfile"
+done || exit 1
+
+# set the exectuable flag on the temporary files
+find .tests -type f -name '*.bats' | xargs chmod +x || exit 1
+
+cp {tests,.tests}/support.bash
+
+bats .tests "$@"
