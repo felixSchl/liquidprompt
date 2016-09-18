@@ -2,24 +2,24 @@
 
 load support
 
-TEST_SHELL=zsh
-
-function _run_shell { run_shell  "$TEST_SHELL"; }
-function _symbol    { get_symbol "$TEST_SHELL" "$@"; }
-
 @test 'lp: stock settings' {
-
-	ps1="$(_run_shell <<-'EOSH'
+	run <<-'EOSH'
 		source "$SCRIPT_DIR/liquidprompt"
 		source "$SCRIPT_DIR/tests/liquidprompt/mocks"
 		_lp_set_prompt
 		echo "$PS1"
 	EOSH
-	)"
 
-	_u="$(_symbol USER)"
-	_h="$(_symbol HOST)"
+	assert_ps1_has User     "$LP_USER_SYMBOL"
+    assert_ps1_not Hostname "$LP_HOST_SYMBOL"
+	assert_ps1_has Perms    ':'
+	assert_ps1_has Path     "$(pwd | sed -e "s|$HOME|~|")"
 
-	assert_has "$ps1" User     "$_u"
-    assert_not "$ps1" Hostname "$_h"
+	# assert_has Proxy            proxy    $LINENO
+	# assert_has Error            127    $LINENO
+	# assert_has GIT_Branch       fake_test    $LINENO
+	# assert_has GIT_Changes      "+2/-1"    $LINENO
+	# assert_has GIT_Commits      111    $LINENO
+	# assert_has GIT_Untrack      untracked    $LINENO
+	# assert_has GIT_Mark         gitmark    $LINENO
 }

@@ -1,6 +1,9 @@
 export SCRIPT_DIR
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/.."
 
+# the shell to test: driven by CI
+TEST_SHELL=${TEST_SHELL:-bash}
+
 function setup
 {
 	set -eo pipefail
@@ -9,6 +12,33 @@ function setup
 	mkdir -p "$TMP_DIR"
 	cd "$TMP_DIR"
 	export GIT_CEILING_DIRECTORY="$TMP_DIR"
+	_activate_symbols "$TEST_SHELL"
+
+	function run_shell {
+		_run_shell "$TEST_SHELL" "$@"
+	}
+
+	# reset the assertion handlers for every test case
+	function assert_ps1_has { echo >&2 'No has test run yet'; return 1; }
+	function assert_ps1_not { echo >&2 'No has test run yet'; return 1; }
+	function assert_ps1_is  { echo >&2 'No has test run yet'; return 1; }
+
+	# run the given block of code (on stdin) in the currently configured shell
+	# and expect a return value describing the $PS1 of the shell.
+	# finally, modify the assert functions
+	function run {
+		export _LP_PS1
+		_LP_PS1="$(run_shell "$@")"
+
+		if [ -z "$_LP_PS1" ]; then
+			echo >&2 "'run' did not return a PS1 string"
+			return 1
+		fi
+
+		function assert_ps1_has { _assert_has "$_LP_PS1" "$@"; }
+		function assert_ps1_not { _assert_not "$_LP_PS1" "$@"; }
+		function assert_ps1_is  { _assert_is  "$_LP_PS1" "$@"; }
+	}
 } >&2
 
 function teardown
@@ -17,15 +47,20 @@ function teardown
 	rm -rf "$TMP_DIR"
 } >&2
 
-function run_shell
+function _run_shell
 {
 	local -r shell="$1"
 	local -r code="$(cat)"
 	case "$shell" in
 		bash) bash --norc -i -c "$code" ;;
 		zsh)  zsh -fi -c "$code" ;;
-		*)    echo >&2 "unsupported shell: $shell"; return 1;
+		*)    echo >&2 "unsupported shell: $shell"; return 1;;
 	esac
+}
+
+function strip_colors
+{
+	sed -r -e 's/\x1b\[[0-9;]*m?//g'
 }
 
 function _assert
@@ -61,36 +96,63 @@ function _assert
     fi
 }
 
-function assert_not { ps1="$1"; shift; _assert "$ps1" 0 "$@"; }
-function assert_has { ps1="$1"; shift; _assert "$ps1" 1 "$@"; }
-function assert_is  { ps1="$1"; shift; _assert "$ps1" 2 "$@"; }
+function _assert_not { ps1="$1"; shift; _assert "$ps1" 0 "$@"; }
+function _assert_has { ps1="$1"; shift; _assert "$ps1" 1 "$@"; }
+function _assert_is  { ps1="$1"; shift; _assert "$ps1" 2 "$@"; }
 
 #!/bin/bash
 
-function cache {
-	local -r ns="$1"
-	local -r key="__cache_${ns}_${2}"
-	local -r fn="$3"
-	shift 3
-	if [[ -z ${!key} ]]
-	then
-		eval "$key=\"$($fn "$@")\""
-	fi
-	echo "${!key}"
+# assign the lp symbols to global variables for ease of access.
+function _activate_symbols {
+	local -r shell="$1"
+	_load_symbols "$shell"
+	export LP_OPEN_ESC=
+	export LP_CLOSE_ESC=
+	export LP_USER_SYMBOL=
+	export LP_HOST_SYMBOL=
+	export LP_FQDN_SYMBOL=
+	export LP_TIME_SYMBOL=
+	export LP_MARK_SYMBOL=
+	export LP_PWD_SYMBOL=
+	export LP_DIR_SYMBOL=
+	case "$shell" in
+		"") return 0 ;;
+		bash|zsh)
+			LP_OPEN_ESC="__lp_symbol_cache_${shell}_OPEN_ESC"
+			LP_CLOSE_ESC="__lp_symbol_cache_${shell}_CLOSE_ESC"
+			LP_USER_SYMBOL="__lp_symbol_cache_${shell}_USER_SYMBOL"
+			LP_HOST_SYMBOL="__lp_symbol_cache_${shell}_HOST_SYMBOL"
+			LP_FQDN_SYMBOL="__lp_symbol_cache_${shell}_FQDN_SYMBOL"
+			LP_TIME_SYMBOL="__lp_symbol_cache_${shell}_TIME_SYMBOL"
+			LP_MARK_SYMBOL="__lp_symbol_cache_${shell}_MARK_SYMBOL"
+			LP_PWD_SYMBOL="__lp_symbol_cache_${shell}_PWD_SYMBOL"
+			LP_DIR_SYMBOL="__lp_symbol_cache_${shell}_DIR_SYMBOL"
+
+			LP_OPEN_ESC="${!LP_OPEN_ESC}"
+			LP_CLOSE_ESC="${!LP_CLOSE_ESC}"
+			LP_USER_SYMBOL="${!LP_USER_SYMBOL}"
+			LP_HOST_SYMBOL="${!LP_HOST_SYMBOL}"
+			LP_FQDN_SYMBOL="${!LP_FQDN_SYMBOL}"
+			LP_TIME_SYMBOL="${!LP_TIME_SYMBOL}"
+			LP_MARK_SYMBOL="${!LP_MARK_SYMBOL}"
+			LP_PWD_SYMBOL="${!LP_PWD_SYMBOL}"
+			LP_DIR_SYMBOL="${!LP_DIR_SYMBOL}"
+		;;
+		*) echo >&2 "unsupported shell: $shell"; return 1;;
+	esac
 }
 
 # load a given PS symbol for the target shell
 # for example, zsh uses '%n' to denote the user, whereas bash uses '\\u'
 # this function memoizes it's input in order to avoid having to re-source
 # liquidprompt for every symbol.
-function get_symbol {
+function _load_symbols {
 	local IFS
 	local syms
 	local -r shell="$1"
-	local -r symbol="$2"
-	local -r cache_key="__symbol_cache_${shell}_${symbol}"
+	local -r cache_key="__lp_symbol_cache_${shell}"
 	if [ -z "${!cache_key}" ]; then
-		syms="$(run_shell "$shell" <<-'EOSH'
+		syms="$(_run_shell "$shell" <<-'EOSH'
 			source "$SCRIPT_DIR/liquidprompt"
 			echo "$_LP_OPEN_ESC"
 			echo "$_LP_CLOSE_ESC"
@@ -104,15 +166,14 @@ function get_symbol {
 		EOSH
 		)"
 		IFS=$'\n' set -- $syms
-		eval "__symbol_cache_${shell}_OPEN=\"$1\"";  shift
-		eval "__symbol_cache_${shell}_CLOSE=\"$1\""; shift
-		eval "__symbol_cache_${shell}_USER=\"$1\"";  shift
-		eval "__symbol_cache_${shell}_HOST=\"$1\"";  shift
-		eval "__symbol_cache_${shell}_FQDN=\"$1\"";  shift
-		eval "__symbol_cache_${shell}_TIME=\"$1\"";  shift
-		eval "__symbol_cache_${shell}_MARK=\"$1\"";  shift
-		eval "__symbol_cache_${shell}_PWD=\"$1\"";   shift
-		eval "__symbol_cache_${shell}_DIR=\"$1\"";   shift
+		eval "__lp_symbol_cache_${shell}_OPEN_ESC=\"$1\"";  shift
+		eval "__lp_symbol_cache_${shell}_CLOSE_ESC=\"$1\""; shift
+		eval "__lp_symbol_cache_${shell}_USER_SYMBOL=\"$1\"";  shift
+		eval "__lp_symbol_cache_${shell}_HOST_SYMBOL=\"$1\"";  shift
+		eval "__lp_symbol_cache_${shell}_FQDN_SYMBOL=\"$1\"";  shift
+		eval "__lp_symbol_cache_${shell}_TIME_SYMBOL=\"$1\"";  shift
+		eval "__lp_symbol_cache_${shell}_MARK_SYMBOL=\"$1\"";  shift
+		eval "__lp_symbol_cache_${shell}_PWD_SYMBOL=\"$1\"";   shift
+		eval "__lp_symbol_cache_${shell}_DIR_SYMBOL=\"$1\"";   shift
 	fi
-	echo "${!cache_key}"
 }
