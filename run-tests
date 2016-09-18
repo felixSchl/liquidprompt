@@ -18,19 +18,19 @@ find tests -type f -name '*.bats' | while read -r file; do
 			in_test = ""
 			test_src = ""
 			header = ""
-			preamble = ""
 			split("zsh bash", SUPPORTED_SHELLS, " ")
 		}
 
 		function flush () {
-			gsub(/\n.*$/, "", test_src)
+			# remove the closing "}", so we can end the inner heredoc
+			gsub(/\n[^\n]*$/, "", test_src)
 			if (test_src != "") {
 				scriptpath = ".tests/" ix ".bats"
 				for (i = 1; i <= length(SUPPORTED_SHELLS); i++) {
 					shell=SUPPORTED_SHELLS[i]
 					print "@test " q shell ": " header " {"
 					print "    script=\"$BATS_TMPDIR/run\""
-					print "    cat <<-__EOTEST__ > \"$script\" && chmod +x \"$script\" && run_shell " shell " \"$script\""
+					print "    cat <<-'"'"'__EOTEST__'"'"' > \"$script\" && chmod +x \"$script\" && run_shell " shell " \"$script\""
 					print test_src
 					print "__EOTEST__"
 					print "}"
@@ -57,11 +57,6 @@ find tests -type f -name '*.bats' | while read -r file; do
 		}
 
 		in_test {
-			if (preamble != "") {
-				print preamble
-				preamble = ""
-			}
-
 			if (test_src != "") {
 				test_src = test_src "\n"
 			}
