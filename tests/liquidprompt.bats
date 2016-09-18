@@ -2,20 +2,24 @@
 
 load support
 
-TEST_SHELL=bash
+TEST_SHELL=zsh
 
-function _run_shell
-{
-	run_shell "$TEST_SHELL" "$@"
-}
+function _run_shell { run_shell  "$TEST_SHELL"; }
+function _symbol    { get_symbol "$TEST_SHELL" "$@"; }
 
-@test 'lp: stock' {
-	ps1="$(_run_shell <<-EOSH
-		export LP_MARK_BATTERY="BATT"
+@test 'lp: stock settings' {
+
+	ps1="$(_run_shell <<-'EOSH'
 		source "$SCRIPT_DIR/liquidprompt"
+		source "$SCRIPT_DIR/tests/liquidprompt/mocks"
 		_lp_set_prompt
-		echo "\$PS1"
+		echo "$PS1"
 	EOSH
 	)"
-	assert_has "$ps1" 'Battery Mark' BATT
+
+	_u="$(_symbol USER)"
+	_h="$(_symbol HOST)"
+
+	assert_has "$ps1" User     "$_u"
+    assert_not "$ps1" Hostname "$_h"
 }
