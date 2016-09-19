@@ -11,7 +11,7 @@ load support
 	EOSH
 
 	assert_ps1_has User     "$LP_USER_SYMBOL"
-    assert_ps1_not Hostname "$LP_HOST_SYMBOL"
+	assert_ps1_not Hostname "$LP_HOST_SYMBOL"
 	assert_ps1_has Perms    ':'
 	assert_ps1_has Path     "$(pwd | sed -e "s|$HOME|~|")"
 

@@ -10,7 +10,9 @@ function setup
 	export TMP_DIR="$BATS_TMPDIR/liquidprompt-tests"
 	rm -rf "$TMP_DIR"
 	mkdir -p "$TMP_DIR"
-	cd "$TMP_DIR"
+	rm -f /tmp/liquidprompt-tests
+	ln -s "$TMP_DIR" /tmp/liquidprompt-tests
+	cd /tmp/liquidprompt-tests
 	export GIT_CEILING_DIRECTORY="$TMP_DIR"
 	_activate_symbols "$TEST_SHELL"
 
