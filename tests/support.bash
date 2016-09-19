@@ -21,25 +21,39 @@ function setup
 	}
 
 	# reset the assertion handlers for every test case
-	function assert_ps1_has { echo >&2 'No has test run yet'; return 1; }
-	function assert_ps1_not { echo >&2 'No has test run yet'; return 1; }
-	function assert_ps1_is  { echo >&2 'No has test run yet'; return 1; }
+	function _invalid_assert { echo >&2 'No has test run yet'; return 1; }
+	function assert_ps1_has  { _invalid_access; }
+	function assert_ps1_not  { _invalid_access; }
+	function assert_ps1_is   { _invalid_access; }
+	function shift_ps1       { _invalid_access; }
 
 	# run the given block of code (on stdin) in the currently configured shell
 	# and expect a return value describing the $PS1 of the shell.
-	# finally, modify the assert functions
+	# finally, modify the assert functions to be in context of this return
+	# value.
+	# note that the underlying script may return more than one PS1 line, which
+	# can be accessed as `${LP_PS1[<index>]}` 
 	function run {
-		export _LP_PS1
-		_LP_PS1="$(run_shell "$@")"
+		local IFS=$'\n'
+		export LP_PS1 _LP_PS1 _LP_PS1_ACTIVE
 
-		if [ -z "$_LP_PS1" ]; then
+		_LP_PS1_ACTIVE=0
+		_LP_PS1=($(run_shell "$@"))
+		LP_PS1="${_LP_PS1[0]}"
+
+		if [ -z "$LP_PS1" ]; then
 			echo >&2 "'run' did not return a PS1 string"
 			return 1
 		fi
 
-		function assert_ps1_has { _assert_has "$_LP_PS1" "$@"; }
-		function assert_ps1_not { _assert_not "$_LP_PS1" "$@"; }
-		function assert_ps1_is  { _assert_is  "$_LP_PS1" "$@"; }
+		function shift_ps1 {
+			((_LP_PS1_ACTIVE++))
+			LP_PS1="${_LP_PS1[$_LP_PS1_ACTIVE]}"
+		}
+
+		function assert_ps1_has { assert_has "$LP_PS1" "$@"; }
+		function assert_ps1_not { assert_not "$LP_PS1" "$@"; }
+		function assert_ps1_is  { assert_is  "$LP_PS1" "$@"; }
 	}
 } >&2
 
@@ -62,7 +76,7 @@ function _run_shell
 
 function strip_colors
 {
-	sed -r -e 's/\x1b\[[0-9;]*m?//g'
+	sed -E "s/"$'\E'"\[([0-9]{1,2}(;[0-9]{1,2})*)?m//g"
 }
 
 function _assert
@@ -78,29 +92,29 @@ function _assert
     fi
 
     if [[ $has == 1 ]] ; then
-        if [[ ! "$ps1" == *$sub* ]]
+		if ! grep -qE "$sub" <<< "$ps1"
         then
-            echo "Expected $name to contain \"$sub\" - got: \"$ps1\""
+            echo "Expected PS1 to contain $name \"$sub\" - got: \"$ps1\""
 			return 1
         fi
     elif [[ $has == 0 ]] ; then
-        if [[ "$ps1" == *$sub* ]]
+		if grep -qE "$sub" <<< "$ps1"
         then
-            echo "Expected $name to NOT contain \"$sub\" - got: \"$ps1\""
+            echo "Expected PS1 to NOT contain $name \"$sub\" - got: \"$ps1\""
 			return 1
         fi
     else
         if [[ ! "$ps1" == "$sub" ]]
         then
-            echo "Expected $name to equal \"$sub\" - got: \"$ps1\""
+            echo "Expected PS1 to equal \"$sub\" - got: \"$ps1\""
 			return 1
         fi
     fi
 }
 
-function _assert_not { ps1="$1"; shift; _assert "$ps1" 0 "$@"; }
-function _assert_has { ps1="$1"; shift; _assert "$ps1" 1 "$@"; }
-function _assert_is  { ps1="$1"; shift; _assert "$ps1" 2 "$@"; }
+function assert_not { ps1="$1"; shift; _assert "$ps1" 0 "$@"; }
+function assert_has { ps1="$1"; shift; _assert "$ps1" 1 "$@"; }
+function assert_is  { ps1="$1"; shift; _assert "$ps1" 2 "$@"; }
 
 #!/bin/bash
 
