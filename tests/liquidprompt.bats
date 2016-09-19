@@ -5,8 +5,9 @@ load support
 @test 'lp: stock' {
 	run <<-'EOSH'
 		source "$SCRIPT_DIR/liquidprompt"
-		_lp_set_prompt
-		echo "$PS1"
+		source "$SCRIPT_DIR/tests/support.bash"
+
+		log_prompt
 	EOSH
 
 	assert_ps1_has User     "$LP_USER_SYMBOL"
@@ -32,22 +33,22 @@ function init_git_repo
 
 	run <<-'EOSH'
 		source "$SCRIPT_DIR/liquidprompt"
-		_lp_set_prompt
-		echo "$PS1"
+		source "$SCRIPT_DIR/tests/support.bash"
+
+		# initial repo
+		log_prompt
 
 		# make some changes
 		touch some-file > /dev/null
-		_lp_set_prompt
-		echo "$PS1"
+		log_prompt
 
 		# stage some changes
 		git add some-file > /dev/null
-		_lp_set_prompt
-		echo "$PS1"
+		log_prompt
 
 		# commit the file
 		git commit -m 'Initial commit' > /dev/null
-		echo "$PS1"
+		log_prompt
 
 		# make some changes to tracked files
 		echo $'foo\nbar' >> some-file
@@ -122,4 +123,17 @@ function init_git_repo
 	assert_ps1_has 'Git mark'    '±'
 	assert_ps1_not 'Git mark'    '\*'
 	assert_ps1_not 'Git changes' '[+-][0-9]+/[+-][0-9]+'
+}
+
+@test 'lp: stock: path shortening' {
+	mkdir -p this/is/a/very/long/path
+	cd this/is/a/very/long/path
+
+	run <<-'EOSH'
+		source "$SCRIPT_DIR/liquidprompt"
+		source "$SCRIPT_DIR/tests/support.bash"
+		log_prompt
+	EOSH
+
+	assert_ps1_has 'Shortened path' 'tmp … s/is/a/very/long/path'
 }

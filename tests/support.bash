@@ -193,3 +193,9 @@ function _load_symbols {
 		eval "__lp_symbol_cache_${shell}_DIR_SYMBOL=\"$1\"";   shift
 	fi
 }
+
+function log_prompt
+{
+	_lp_set_prompt
+	echo "$PS1"
+}
