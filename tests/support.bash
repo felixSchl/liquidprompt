@@ -25,9 +25,10 @@ function setup
 	then
 		rm -f /tmp/liquidprompt-tests
 		ln -s "$TMP_DIR" /tmp/liquidprompt-tests
-		cd /tmp/liquidprompt-tests
+		TMP_DIR=/tmp/liquidprompt-tests
 	fi
 
+	cd "$TMP_DIR"
 	export GIT_CEILING_DIRECTORY="$TMP_DIR"
 	_activate_symbols "$TEST_SHELL"
 
