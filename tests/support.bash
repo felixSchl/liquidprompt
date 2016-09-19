@@ -1,8 +1,16 @@
+#!/bin/bash
+
 export SCRIPT_DIR
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/.."
 
 # the shell to test: driven by CI
 TEST_SHELL=${TEST_SHELL:-bash}
+
+case "$(uname)" in
+	Darwin) OS=osx ;;
+	Linux)  OS=linux ;;
+	*)      OS=unknown ;;
+esac
 
 function setup
 {
@@ -10,9 +18,16 @@ function setup
 	export TMP_DIR="$BATS_TMPDIR/liquidprompt-tests"
 	rm -rf "$TMP_DIR"
 	mkdir -p "$TMP_DIR"
-	rm -f /tmp/liquidprompt-tests
-	ln -s "$TMP_DIR" /tmp/liquidprompt-tests
-	cd /tmp/liquidprompt-tests
+
+	# on OSX, we are handed a deep path to some
+	# /var/private/tmp/ directory
+	if [[ "$OS" == osx ]]
+	then
+		rm -f /tmp/liquidprompt-tests
+		ln -s "$TMP_DIR" /tmp/liquidprompt-tests
+		cd /tmp/liquidprompt-tests
+	fi
+
 	export GIT_CEILING_DIRECTORY="$TMP_DIR"
 	_activate_symbols "$TEST_SHELL"
 
