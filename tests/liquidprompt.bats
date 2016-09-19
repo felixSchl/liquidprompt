@@ -9,14 +9,10 @@ load support
 		log_prompt
 	EOSH
 
-	assert_ps1_has User "$LP_USER_SYMBOL"
-	if [[ "$CI" = true ]]; then
-		assert_ps1_has Hostname "$LP_HOST_SYMBOL"
-	else
-		assert_ps1_not Hostname "$LP_HOST_SYMBOL"
-	fi
-	assert_ps1_has Perms ':'
-	assert_ps1_has Path  "$(pwd | sed -e "s|$HOME|~|")"
+	assert_ps1_has User     "$LP_USER_SYMBOL"
+	assert_ps1_not Hostname "$LP_HOST_SYMBOL"
+	assert_ps1_has Perms    ':'
+	assert_ps1_has Path     "$(pwd | sed -e "s|$HOME|~|")"
 }
 
 function init_git_repo
