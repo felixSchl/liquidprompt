@@ -17,9 +17,9 @@ load support
 
 function init_git_repo
 {
-	mkdir repo
-	git -c repo init --bare
-	git clone "file://$PWD/repo"
+	mkdir remoterepo
+	git -C remoterepo init --bare
+	git clone "file://$PWD/remoterepo" repo
 	cd repo
 	git config user.name  'Foo Bar'
 	git config user.email 'foo@bar.com'
