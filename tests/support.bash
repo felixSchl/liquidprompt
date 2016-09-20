@@ -39,13 +39,13 @@ function setup
 	# reset the assertion handlers for every test case
 	function _invalid_assert { echo >&2 'No has test run yet'; return 1; }
 
-	function assert_ps1_has       { _invalid_access; }
-	function assert_ps1_not       { _invalid_access; }
-	function assert_ps1_is        { _invalid_access; }
-	function assert_ps1_has_plain { _invalid_access; }
-	function assert_ps1_not_plain { _invalid_access; }
-	function assert_ps1_is_plain  { _invalid_access; }
-	function shift_ps1            { _invalid_access; }
+	function assert_ps1_has       { _invalid_assert; }
+	function assert_ps1_not       { _invalid_assert; }
+	function assert_ps1_is        { _invalid_assert; }
+	function assert_ps1_plain_has { _invalid_assert; }
+	function assert_ps1_plain_not { _invalid_assert; }
+	function assert_ps1_plain_is  { _invalid_assert; }
+	function shift_ps1            { _invalid_assert; }
 
 	# run the given block of code (on stdin) in the currently configured shell
 	# and expect a return value describing the $PS1 of the shell.
@@ -101,42 +101,50 @@ function _run_shell
 
 function strip_colors
 {
-	sed -r "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g" |\
-		sed "s|$LP_OPEN_ESC||g; s|$LP_CLOSE_ESC||g" | \
-		sed "s|||g"
+	perl -pe 's/\e\[?.*?[\@-~]//g' \
+		| sed "s|$LP_OPEN_ESC||g; s|$LP_CLOSE_ESC||g" \
+		| sed "s|||g"
 }
 
 function _assert
 {
-    local ps1=$1
-    local has=$2
-    local name=$3
-    local sub=$4
+	local -r ps1=$1
+	local -r mode=$2
 
-    if [[ -z "$sub" ]]
-    then
-        return 1
-    fi
+	if [[ "$mode" == 2 ]]; then
+		local -r sub=$3
+	else
+		local -r name=$3
+		local -r sub=$4
+	fi
 
-    if [[ $has == 1 ]] ; then
-		if ! grep -qE "$sub" <<< "$ps1"
-        then
-            echo "Expected PS1 to contain $name \"$sub\" - got: \"$ps1\"" | tee /tmp/foo.bar
-			return 1
-        fi
-    elif [[ $has == 0 ]] ; then
-		if grep -qE "$sub" <<< "$ps1"
-        then
-            echo "Expected PS1 to NOT contain $name \"$sub\" - got: \"$ps1\""
-			return 1
-        fi
-    else
-        if [[ ! "$ps1" == "$sub" ]]
-        then
-            echo "Expected PS1 to equal \"$sub\" - got: \"$ps1\""
-			return 1
-        fi
-    fi
+	echo "$ps1" > /tmp/foo.bar
+
+	if [[ -z "$sub" ]]; then
+		echo '_assert: no substring to given to test'
+		return 1
+	fi
+
+	case "$mode" in
+		0) # does NOT contain
+			if grep -qE "$sub" <<< "$ps1"; then
+				echo "Expected PS1 to NOT contain $name \"$sub\" - got: \"$ps1\""
+				return 1
+			fi
+		;;
+		1) # does contain
+			if ! grep -qE "$sub" <<< "$ps1"; then
+				echo "Expected PS1 to contain $name \"$sub\" - got: \"$ps1\""
+				return 1
+			fi
+		;;
+		2) # exact match
+			if [[ ! "$ps1" == "$sub" ]]; then
+				echo "Expected PS1 to equal \"$sub\" - got: \"$ps1\""
+				return 1
+			fi
+		;;
+	esac
 }
 
 function assert_not { ps1="$1"; shift; _assert "$ps1" 0 "$@"; }

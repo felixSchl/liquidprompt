@@ -1,0 +1,23 @@
+#!bin/bash
+
+_lp_cpu_load () {
+	echo '0.64'
+}
+
+_tmux="$(which tmux)"
+tmux () {
+	if [[ "$1" == list-sessions ]]; then
+		echo 1
+	else
+		"$_tmux" "$@"
+	fi
+}
+
+_screen="$(which screen)"
+screen () {
+	if [[ "$1" == -ls ]]; then
+		echo 1
+	else
+		"$_screen" "$@"
+	fi
+}

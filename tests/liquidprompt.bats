@@ -5,14 +5,13 @@ load support
 @test 'lp: stock' {
 	run <<-'EOSH'
 		source "$SCRIPT_DIR/liquidprompt"
+		source "$SCRIPT_DIR/tests/mocks.bash"
 		source "$SCRIPT_DIR/tests/support.bash"
+
 		log_prompt
 	EOSH
 
-	assert_ps1_has User     "$LP_USER_SYMBOL"
-	assert_ps1_not Hostname "$LP_HOST_SYMBOL"
-	assert_ps1_has Perms    ':'
-	assert_ps1_has Path     "$(pwd | sed -e "s|$HOME|~|")"
+	assert_ps1_plain_is '0.64 1d [%n:/tmp/liquidprompt-tests] %(!.#.%%) '
 }
 
 function init_git_repo
@@ -31,7 +30,9 @@ function init_git_repo
 	git checkout -b funky/branch >&2
 
 	run <<-'EOSH'
+		export LP_ENABLE_TIME=false
 		source "$SCRIPT_DIR/liquidprompt"
+		source "$SCRIPT_DIR/tests/mocks.bash"
 		source "$SCRIPT_DIR/tests/support.bash"
 
 		# initial repo
@@ -63,65 +64,68 @@ function init_git_repo
 
 		# push to origin/master
 		git push -u origin funky/branch > /dev/null
+		sha="$(git --no-pager show -s --format='%H' HEAD)"
+		echo "$sha" >&2
+		log_prompt
+
+		# reset to be behind origin/master
+		git reset --hard HEAD~ > /dev/null
+		log_prompt
+
+		# set origin/master to be behind us
+		{
+			git push -f
+			git reset --hard "$sha"
+		} > /dev/null
+		log_prompt
+
+		# make some changes to tracked files
+		echo $'foo\nbar' >> some-file
 		log_prompt
 	EOSH
 
 	echo 'initial repo'
-	assert_ps1_has 'Git branch'    'funky/branch'
-	assert_ps1_has 'Git mark'      '±'
-	assert_ps1_not 'Git untracked' '\*'
-	assert_ps1_not 'Git changes'   '[+-][0-9]+/[+-][0-9]+'
+	assert_ps1_plain_is '0.64 1d [%n:/tmp/liquidprompt-tests/repo] funky/branch ± '
 
 	echo 'after adding untracked file'
 	shift_ps1
-	assert_ps1_has 'Git branch'    'funky/branch'
-	assert_ps1_has 'Git mark'      '±'
-	assert_ps1_has 'Git untracked' '\*'
-	assert_ps1_not 'Git changes'   '[+-][0-9]+/[+-][0-9]+'
+	assert_ps1_plain_is '0.64 1d [%n:/tmp/liquidprompt-tests/repo] funky/branch* ± '
 
 	echo 'after staging'
 	shift_ps1
-	assert_ps1_has 'Git branch'    'funky/branch'
-	assert_ps1_has 'Git mark'      '±'
-	assert_ps1_not 'Git untracked' '\*'
-	assert_ps1_not 'Git changes'   '[+-][0-9]+/[+-][0-9]+'
+	assert_ps1_plain_is '0.64 1d [%n:/tmp/liquidprompt-tests/repo] funky/branch ± '
 
 	echo 'after committing'
 	shift_ps1
-	assert_ps1_has 'Git branch'  'funky/branch'
-	assert_ps1_has 'Git mark'    '±'
-	assert_ps1_not 'Git mark'    '\*'
-	assert_ps1_not 'Git changes' '[+-][0-9]+/[+-][0-9]+'
+	assert_ps1_plain_is '0.64 1d [%n:/tmp/liquidprompt-tests/repo] funky/branch ± '
 
 	echo 'after modifying tracked file'
 	shift_ps1
-	assert_ps1_has       'Git branch'       'funky/branch'
-	assert_ps1_has       'Git mark'         '±'
-	assert_ps1_not       'Git untracked'    '\*'
-	assert_ps1_plain_has 'Git some changes' '\([-+][0-9]+/[-+][0-9]+\)'
-	assert_ps1_plain_has 'Git some changes' '\(\+2/-0\)'
+	assert_ps1_plain_is '0.64 1d [%n:/tmp/liquidprompt-tests/repo] funky/branch(+2/-0) ± '
 
 	echo 'after staging tracked file'
 	shift_ps1
-	assert_ps1_has       'Git branch'     'funky/branch'
-	assert_ps1_has       'Git mark'       '±'
-	assert_ps1_not       'Git untracked'  '\*'
-	assert_ps1_plain_has 'Git changes'    '\([+-][0-9]+/[+-][0-9]+\)'
-	assert_ps1_plain_has 'Git no changes' '\(\+0/-0\)'
+	assert_ps1_plain_is '0.64 1d [%n:/tmp/liquidprompt-tests/repo] funky/branch(+0/-0) ± '
 
 	echo 'after committing'
 	shift_ps1
-	assert_ps1_has 'Git branch'    'funky/branch'
-	assert_ps1_has 'Git mark'      '±'
-	assert_ps1_not 'Git untracked' '\*'
-	assert_ps1_not 'Git changes'   '[+-][0-9]+/[+-][0-9]+'
+	assert_ps1_plain_is '0.64 1d [%n:/tmp/liquidprompt-tests/repo] funky/branch ± '
 
 	echo 'after pushing'
 	shift_ps1
-	assert_ps1_has 'Git branch'    'funky/branch'
-	assert_ps1_has 'Git mark'      '±'
-	assert_ps1_not 'Git untracked' '\*'
-	assert_ps1_not 'Git changes'   '[+-][0-9]+/[+-][0-9]+'
+	assert_ps1_plain_is '0.64 1d [%n:/tmp/liquidprompt-tests/repo] funky/branch ± '
+
+	echo 'after setting to be behind origin'
+	shift_ps1
+	assert_ps1_plain_is '0.64 1d [%n:/tmp/liquidprompt-tests/repo] funky/branch(-1) ± '
+
+	echo 'after setting origin to be behind us'
+	shift_ps1
+	assert_ps1_plain_is '0.64 1d [%n:/tmp/liquidprompt-tests/repo] funky/branch(1) ± '
+
+	echo 'after making local changes'
+	shift_ps1
+	assert_ps1_plain_is '0.64 1d [%n:/tmp/liquidprompt-tests/repo] funky/branch(+2/-0,1) ± '
 }
 
 @test 'lp: stock: path shortening' {
@@ -130,13 +134,10 @@ function init_git_repo
 
 	run <<-'EOSH'
 		source "$SCRIPT_DIR/liquidprompt"
+		source "$SCRIPT_DIR/tests/mocks.bash"
 		source "$SCRIPT_DIR/tests/support.bash"
 		log_prompt
 	EOSH
 
-	# note: the output is different per shell! is this right?
-	case "$TEST_SHELL" in
-		bash) assert_ps1_has 'Shortened path' '/tmp … s/is/a/very/long/path' ;;
-		zsh)  assert_ps1_has 'Shortened path' '/tmp … mpt-tests/this/is/a/very/long/path' ;;
-	esac
+	assert_ps1_plain_is '0.64 1d [%n:/tmp … s/this/is/a/very/long/path] %(!.#.%%) '
 }
