@@ -11,7 +11,7 @@ test-zsh:
 	TEST_SHELL=zsh make test
 
 test-bash:
-	TEST_SHELL=zsh make test
+	TEST_SHELL=bash make test
 
 watch:
 	@echo 'watching for changes...' && \

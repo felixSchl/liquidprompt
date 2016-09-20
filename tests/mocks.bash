@@ -4,6 +4,10 @@ _lp_cpu_load () {
 	echo '0.64'
 }
 
+_lp_runtime () {
+	echo '2s'
+}
+
 _tmux="$(which tmux)"
 tmux () {
 	if [[ "$1" == list-sessions ]]; then
