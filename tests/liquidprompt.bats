@@ -95,33 +95,33 @@ function init_git_repo
 
 	echo 'after modifying tracked file'
 	shift_ps1
-	assert_ps1_has 'Git branch' 'funky/branch'
-	assert_ps1_has 'Git mark'   '±'
-	assert_ps1_not 'Git mark'   '\*'
-	assert_ps1_has 'Git mark'   '[+-][0-9]+/[+-][0-9]+'
-	assert_ps1_has 'Git mark'   '\+2/-0'
+	assert_ps1_has       'Git branch'       'funky/branch'
+	assert_ps1_has       'Git mark'         '±'
+	assert_ps1_not       'Git untracked'    '\*'
+	assert_ps1_plain_has 'Git some changes' '\([-+][0-9]+/[-+][0-9]+\)'
+	assert_ps1_plain_has 'Git some changes' '\(\+2/-0\)'
 
 	echo 'after staging tracked file'
 	shift_ps1
-	assert_ps1_has 'Git branch' 'funky/branch'
-	assert_ps1_has 'Git mark'   '±'
-	assert_ps1_not 'Git mark'   '\*'
-	assert_ps1_has 'Git mark'   '[+-][0-9]+/[+-][0-9]+'
-	assert_ps1_has 'Git mark'   '\+0/-0'
+	assert_ps1_has       'Git branch'     'funky/branch'
+	assert_ps1_has       'Git mark'       '±'
+	assert_ps1_not       'Git untracked'  '\*'
+	assert_ps1_plain_has 'Git changes'    '\([+-][0-9]+/[+-][0-9]+\)'
+	assert_ps1_plain_has 'Git no changes' '\(\+0/-0\)'
 
 	echo 'after committing'
 	shift_ps1
-	assert_ps1_has 'Git branch'  'funky/branch'
-	assert_ps1_has 'Git mark'    '±'
-	assert_ps1_not 'Git mark'    '\*'
-	assert_ps1_not 'Git changes' '[+-][0-9]+/[+-][0-9]+'
+	assert_ps1_has 'Git branch'    'funky/branch'
+	assert_ps1_has 'Git mark'      '±'
+	assert_ps1_not 'Git untracked' '\*'
+	assert_ps1_not 'Git changes'   '[+-][0-9]+/[+-][0-9]+'
 
 	echo 'after pushing'
 	shift_ps1
-	assert_ps1_has 'Git branch'  'funky/branch'
-	assert_ps1_has 'Git mark'    '±'
-	assert_ps1_not 'Git mark'    '\*'
-	assert_ps1_not 'Git changes' '[+-][0-9]+/[+-][0-9]+'
+	assert_ps1_has 'Git branch'    'funky/branch'
+	assert_ps1_has 'Git mark'      '±'
+	assert_ps1_not 'Git untracked' '\*'
+	assert_ps1_not 'Git changes'   '[+-][0-9]+/[+-][0-9]+'
 }
 
 @test 'lp: stock: path shortening' {

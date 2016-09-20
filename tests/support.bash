@@ -38,10 +38,14 @@ function setup
 
 	# reset the assertion handlers for every test case
 	function _invalid_assert { echo >&2 'No has test run yet'; return 1; }
-	function assert_ps1_has  { _invalid_access; }
-	function assert_ps1_not  { _invalid_access; }
-	function assert_ps1_is   { _invalid_access; }
-	function shift_ps1       { _invalid_access; }
+
+	function assert_ps1_has       { _invalid_access; }
+	function assert_ps1_not       { _invalid_access; }
+	function assert_ps1_is        { _invalid_access; }
+	function assert_ps1_has_plain { _invalid_access; }
+	function assert_ps1_not_plain { _invalid_access; }
+	function assert_ps1_is_plain  { _invalid_access; }
+	function shift_ps1            { _invalid_access; }
 
 	# run the given block of code (on stdin) in the currently configured shell
 	# and expect a return value describing the $PS1 of the shell.
@@ -56,6 +60,7 @@ function setup
 		_LP_PS1_ACTIVE=0
 		_LP_PS1=($(run_shell "$@"))
 		LP_PS1="${_LP_PS1[0]}"
+		LP_PS1_PLAIN="$(strip_colors <<< "$LP_PS1")"
 
 		if [ -z "$LP_PS1" ]; then
 			echo >&2 "'run' did not return a PS1 string"
@@ -65,11 +70,15 @@ function setup
 		function shift_ps1 {
 			((_LP_PS1_ACTIVE+=1))
 			LP_PS1="${_LP_PS1[$_LP_PS1_ACTIVE]}"
+			LP_PS1_PLAIN="$(strip_colors <<< "$LP_PS1")"
 		}
 
-		function assert_ps1_has { assert_has "$LP_PS1" "$@"; }
-		function assert_ps1_not { assert_not "$LP_PS1" "$@"; }
-		function assert_ps1_is  { assert_is  "$LP_PS1" "$@"; }
+		function assert_ps1_has       { assert_has "$LP_PS1" "$@"; }
+		function assert_ps1_not       { assert_not "$LP_PS1" "$@"; }
+		function assert_ps1_is        { assert_is  "$LP_PS1" "$@"; }
+		function assert_ps1_plain_has { assert_has "$LP_PS1_PLAIN" "$@"; }
+		function assert_ps1_plain_not { assert_not "$LP_PS1_PLAIN" "$@"; }
+		function assert_ps1_plain_is  { assert_is  "$LP_PS1_PLAIN" "$@"; }
 	}
 } >&2
 
@@ -92,7 +101,9 @@ function _run_shell
 
 function strip_colors
 {
-	sed -E "s/"$'\E'"\[([0-9]{1,2}(;[0-9]{1,2})*)?m//g"
+	sed -r "s/\x1B\[([0-9]{1,2}(;[0-9]{1,2})?)?[m|K]//g" |\
+		sed "s|$LP_OPEN_ESC||g; s|$LP_CLOSE_ESC||g" | \
+		sed "s|||g"
 }
 
 function _assert
@@ -110,7 +121,7 @@ function _assert
     if [[ $has == 1 ]] ; then
 		if ! grep -qE "$sub" <<< "$ps1"
         then
-            echo "Expected PS1 to contain $name \"$sub\" - got: \"$ps1\""
+            echo "Expected PS1 to contain $name \"$sub\" - got: \"$ps1\"" | tee /tmp/foo.bar
 			return 1
         fi
     elif [[ $has == 0 ]] ; then
