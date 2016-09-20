@@ -1,0 +1,6 @@
+source "$SCRIPT_DIR/liquidprompt"
+source "$SCRIPT_DIR/tests/mocks.bash"
+source "$SCRIPT_DIR/tests/support.bash"
+
+eval_prompt
+assert_ps1_plain_is "0.64 1d [$_LP_USER_SYMBOL:/tmp/liquidprompt-tests] 2s $_LP_MARK_SYMBOL "

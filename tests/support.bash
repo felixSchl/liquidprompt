@@ -6,6 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/.."
 # the shell to test: driven by CI
 TEST_SHELL=${TEST_SHELL:-bash}
 
+export OS=
 case "$(uname)" in
 	Darwin) OS=osx ;;
 	Linux)  OS=linux ;;
@@ -31,7 +32,6 @@ function setup
 	export GIT_CEILING_DIRECTORY="$TMP_DIR"
 
 	function run_shell {
-		echo "$TEST_SHELL" >> /tmp/foo.bar
 		_run_shell "$TEST_SHELL" "$@"
 	}
 
@@ -46,12 +46,19 @@ function teardown
 function _run_shell
 {
 	local -r shell="$1"
-	local -r code="$(cat)"
-	case "$shell" in
-		bash) bash --norc -i -c "$code" ;;
-		zsh)  zsh -fi -c "$code" ;;
-		*)    echo >&2 "unsupported shell: $shell"; return 1;;
-	esac
+	if [[ -n "$2" ]]; then
+		case "$shell" in
+			bash) bash --norc -i "${SCRIPT_DIR}/$2" ;;
+			zsh)  zsh -fi "${SCRIPT_DIR}/$2" ;;
+			*)    echo >&2 "unsupported shell: $shell"; return 1;;
+		esac
+	else
+		case "$shell" in
+			bash) bash --norc -i -c "$(cat)" ;;
+			zsh)  zsh -fi -c "$(cat)" ;;
+			*)    echo >&2 "unsupported shell: $shell"; return 1;;
+		esac
+	fi
 }
 
 function _invalid_assert     {
@@ -74,7 +81,7 @@ function eval_prompt
 	fi
 
 	export _LP_PS1 _LP_PS1_PLAIN
-	set +e; _lp_set_prompt; set -e
+	_lp_set_prompt
 	_LP_PS1="$PS1"
 	_LP_PS1_PLAIN="$(strip_colors <<< "$_LP_PS1")"
 

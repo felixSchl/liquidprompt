@@ -1,0 +1,16 @@
+mkdir -p this/is/a/very/very/very/long/path
+cd       this/is/a/very/very/very/long/path
+
+LP_PATH_LENGTH=5
+
+source "$SCRIPT_DIR/liquidprompt"
+source "$SCRIPT_DIR/tests/mocks.bash"
+source "$SCRIPT_DIR/tests/support.bash"
+
+eval_prompt
+
+if [[ "$TEST_SHELL" == bash ]] || [[ "$OS" = osx ]]; then
+    assert_ps1_plain_is "0.64 1d [$_LP_USER_SYMBOL:/tmp … path] 2s $_LP_MARK_SYMBOL "
+else
+     assert_ps1_plain_is "0.64 1d [$_LP_USER_SYMBOL:/tmp … path] 2s $_LP_MARK_SYMBOL "
+fi
