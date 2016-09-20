@@ -63,7 +63,7 @@ function setup
 		fi
 
 		function shift_ps1 {
-			((_LP_PS1_ACTIVE++))
+			((_LP_PS1_ACTIVE+=1))
 			LP_PS1="${_LP_PS1[$_LP_PS1_ACTIVE]}"
 		}
 
