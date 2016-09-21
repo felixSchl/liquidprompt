@@ -6,4 +6,4 @@ cd       this/is/a/very/very/very/long/path
 
 eval_prompt
 
-assert_ps1_plain_is "0.64 1d [$_LP_USER_SYMBOL:/tmp … path] 2s $_LP_MARK_SYMBOL "
+assert_ps1_plain_is "0.64 ${DETACHED_SESSION_COUNT}d [$_LP_USER_SYMBOL:/tmp … path] 2s $_LP_MARK_SYMBOL "
