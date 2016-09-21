@@ -8,6 +8,10 @@ _lp_runtime () {
 	echo '2s'
 }
 
+_lp_connection() {
+	echo "$TEST_CONNECTION";
+}
+
 _tmux="$(which tmux)"
 tmux () {
 	if [[ "$1" == list-sessions ]]; then

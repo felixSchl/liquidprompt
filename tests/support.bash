@@ -4,7 +4,8 @@ export SCRIPT_DIR
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/.."
 
 # the shell to test: driven by CI
-TEST_SHELL=${TEST_SHELL:-bash}
+export TEST_SHELL=${TEST_SHELL:-bash}
+export TEST_CONNECTION=${TEST_CONNECTION:-ssh}
 
 export OS=
 case "$(uname)" in

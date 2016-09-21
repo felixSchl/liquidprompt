@@ -3,8 +3,8 @@ os:
   - osx
 
 env:
-  - TEST_SHELL=bash
-  - TEST_SHELL=zsh
+  - TEST_CONNECTION=lcl TEST_SHELL=bash
+  - TEST_CONNECTION=lcl TEST_SHELL=zsh
 
 before_install:
   - |
