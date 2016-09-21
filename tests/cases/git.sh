@@ -1,3 +1,5 @@
+source "$SCRIPT_DIR/tests/support/mocked-liquidprompt.sh"
+
 # create a repo
 {
     mkdir remoterepo
@@ -8,10 +10,6 @@
     git config user.email 'foo@bar.com'
     git checkout -b funky/branch >&2
 } > /dev/null
-
-source "$SCRIPT_DIR/tests/mocks.bash"
-source "$SCRIPT_DIR/liquidprompt"
-source "$SCRIPT_DIR/tests/support.bash"
 
 # initial repo
 eval_prompt 'initial repo'
